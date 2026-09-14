@@ -211,9 +211,9 @@ def main() -> int:
         _ok(f"QR side built          {len(qr_side):>7,} rows  "
             f"({int(qr_side.get('MAPPING_VALID', pd.Series(dtype=bool)).sum())} mapped)")
 
-        verification = verification.run_verification(csv_side, qr_side, scope_df)
-        vc_counts    = verification["COMPARISON_STATUS"].value_counts().to_dict()
-        _ok(f"verification_comparison{len(verification):>7,} rows")
+        verification_comparison = verification.run_verification(csv_side, qr_side, scope_df)
+        vc_counts    = verification_comparison["COMPARISON_STATUS"].value_counts().to_dict()
+        _ok(f"verification_comparison{len(verification_comparison):>7,} rows")
         for status, count in sorted(vc_counts.items()):
             print(f"       {status:<12}: {count:,}")
 
@@ -235,10 +235,10 @@ def main() -> int:
         )
         _ok(f"dashboard_reporting_by_precinct             {len(dash_reporting):>7,} rows")
 
-        dash_verif_summary     = dashboard_rollups.build_verification_summary(verification)
+        dash_verif_summary     = dashboard_rollups.build_verification_summary(verification_comparison)
         _ok(f"dashboard_verification_summary              {len(dash_verif_summary):>7,} rows")
 
-        dash_verif_by_precinct = dashboard_rollups.build_verification_by_precinct(verification)
+        dash_verif_by_precinct = dashboard_rollups.build_verification_by_precinct(verification_comparison)
         _ok(f"dashboard_verification_by_precinct          {len(dash_verif_by_precinct):>7,} rows")
 
         dash_precinct_summary  = dashboard_rollups.build_verification_precinct_summary(
@@ -286,6 +286,18 @@ def main() -> int:
         print(f"  {name:<48} {row['SEVERITY']:<10} {row['ISSUE_COUNT']:>6}  "
               + _c(status, color))
 
+    non_empty_issues = {name: df for name, df in issues.items() if not df.empty}
+    if non_empty_issues:
+        print()
+        print("  QA ISSUE DETAILS (first 5 rows per non-empty check)")
+        print("  " + "-" * 58)
+        for check_name, issue_df in non_empty_issues.items():
+            print(f"  [{check_name}] {len(issue_df)} issue row(s)")
+            print(issue_df.head(5).to_string(index=False))
+            if len(issue_df) > 5:
+                print(f"  ... {len(issue_df) - 5} additional row(s) omitted")
+            print()
+
     # -----------------------------------------------------------------------
     # PHASE 6 — PUBLICATION GATE DECISION
     # -----------------------------------------------------------------------
@@ -325,7 +337,7 @@ def main() -> int:
         (er_canonical,             config.OUT_MOBILE_ER_CANONICAL,          "mobile_election_returns_canonical"),
         (mobile_qr,                config.OUT_MOBILE_QR,                    "mobile_qr_results"),
         (qr_canonical,             config.OUT_MOBILE_QR_CANONICAL,          "mobile_qr_results_canonical"),
-        (verification,             config.OUT_VERIFICATION_COMPARISON,      "verification_comparison"),
+        (verification_comparison,  config.OUT_VERIFICATION_COMPARISON,      "verification_comparison"),
         (dash_reporting,           config.OUT_DASHBOARD_REPORTING,          "dashboard_reporting_by_precinct"),
         (dash_verif_summary,       config.OUT_DASHBOARD_VERIF_SUMMARY,      "dashboard_verification_summary"),
         (dash_verif_by_precinct,   config.OUT_DASHBOARD_VERIF_BY_PRECINCT,  "dashboard_verification_by_precinct"),
